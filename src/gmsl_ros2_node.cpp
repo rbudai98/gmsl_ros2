@@ -29,22 +29,23 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <publisher_factory.h>
+// #include <publisher_factory.h>
 
 #include <chrono>
-#include <functional>  // Arithmetic, comparisons, and logical operations
+#include <functional>
 #include <map>
-#include <memory>  // Dynamic memory management
+#include <memory> 
 #include <rclcpp/rclcpp.hpp>
-#include <string>  // String functions
+#include <string> 
 #include <thread>
 
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "safedataaccess.h"
 #include "std_msgs/msg/string.hpp"
+#include "v4l2Image_msg.h"
 
-#define FRAME_SIZE 1920*1080
+#define FRAME_SIZE 1920 * 1080
 
 using namespace std::chrono;
 using namespace std::chrono_literals;
@@ -55,115 +56,116 @@ using namespace std::chrono_literals;
 class GmslNode : public rclcpp::Node
 {
 private:
-  // Initializing camera and establishing connection
-  uint16_t ** frame;
-  PublisherFactory publishers;
+        // Initializing camera and establishing connection
+        uint16_t **frame;
+        // PublisherFactory publishers;
+        // camera parameters
+        bool m_video_thread;
+
 
 public:
-  SafeDataAccess<int16_t frame *> m_safeDataAccess;
+        SafeDataAccess<uint16_t *> m_safeDataAccess;
 
 private:
-  // camera parameters
-  bool m_video_thread;
-
-private:
-  rcl_interfaces::msg::SetParametersResult parameterCallback(
-    const std::vector<rclcpp::Parameter> & parameters)
-  {
-      publishers.setThreadMode("video", get_parameter("video").as_bool());
-
-      m_video_thread = get_parameter("video").as_bool();
-   
-    rcl_interfaces::msg::SetParametersResult result;
-    result.successful = true;
-    result.reason = "success";
-
-    return result;
-  }
-
-  OnSetParametersCallbackHandle::SharedPtr callback_handle_;
-
-public:
-  TofNode(std::string * arguments, std::string camera_path, uint16_t ** frame)
-  : Node("tof_camera_node")
-  {
-    m_video_thread = true;
-
-    this->declare_parameter("video", true);
-
-    this->get_parameter("video", m_video_thread);
-
-    this->camera = camera;
-    this->frame = frame;
-
-    // add 12 items in the list needed for circular vector
-    for (int i = 0; i <= 12; i++) {
-      m_safeDataAccess.populateData(new uint16_t[FRAME_SIZE]);
-    }
-
-    if (!streamOnFlag) {
-      streamOnFlag = true;
-    }
-
-    publishers.createNew(this, camera, frame, &m_safeDataAccess);
-
-    callback_handle_ = this->add_on_set_parameters_callback(
-      std::bind(&TofNode::parameterCallback, this, std::placeholders::_1));
-
-    if (
-      (std::strcmp(arguments[3].c_str(), "True") == 0) ||
-      (std::strcmp(arguments[3].c_str(), "true") == 0))
-      publishers.createMultiThreadPublisherWorkers(camera, frame);
-    else
-      publishers.createSingleThreadPublisherWorker(camera, frame);
-  }
-
-  void service_callback()
-  {
-    if (streamOnFlag) {
-      globalTimeStamp = rclcpp::Clock{RCL_ROS_TIME}.now();
-
-      uint16_t* tmp1 = m_safeDataAccess.getNextElement();
-
-      m_safeDataAccess.setReadytoStart();
-      
-//       getNewFrame(camera, tmp1);
-//       TO DO: get frame from server
-        for (int i=0;i<FRAME_SIZE;i++)
+        rcl_interfaces::msg::SetParametersResult parameterCallback(
+            const std::vector<rclcpp::Parameter> &parameters)
         {
-                tmp1[i] = 1;
-        }
-      
-      
-      m_safeDataAccess.addElement(tmp1);
-    }
-  }
+                publishers.setThreadMode("video", get_parameter("video").as_bool());
 
-  void stopNode()
-  {
-    publishers.removePublisherWorkers();
-    publishers.deletePublishers(camera);
-  }
+                m_video_thread = get_parameter("video").as_bool();
+
+                rcl_interfaces::msg::SetParametersResult result;
+                result.successful = true;
+                result.reason = "success";
+
+                return result;
+        }
+
+        OnSetParametersCallbackHandle::SharedPtr callback_handle_;
+
+public:
+        GmslNode(std::string *arguments, std::string camera_path, uint16_t **frame)
+            : Node("tof_camera_node")
+        {
+                m_video_thread = true;
+
+                this->declare_parameter("video", true);
+
+                this->get_parameter("video", m_video_thread);
+
+                this->frame = frame;
+
+                // add 12 items in the list needed for circular vector
+                for (int i = 0; i <= 12; i++)
+                {
+                        m_safeDataAccess.populateData(new uint16_t[FRAME_SIZE]);
+                }
+
+                if (!streamOnFlag)
+                {
+                        streamOnFlag = true;
+                }
+
+                publishers.createNew(this, camera, frame, &m_safeDataAccess);
+
+                callback_handle_ = this->add_on_set_parameters_callback(
+                    std::bind(&GmslNode::parameterCallback, this, std::placeholders::_1));
+
+                if (
+                    (std::strcmp(arguments[3].c_str(), "True") == 0) ||
+                    (std::strcmp(arguments[3].c_str(), "true") == 0))
+                        publishers.createMultiThreadPublisherWorkers(camera, frame);
+                else
+                        publishers.createSingleThreadPublisherWorker(camera, frame);
+        }
+
+        void service_callback()
+        {
+                if (streamOnFlag)
+                {
+                        globalTimeStamp = rclcpp::Clock{RCL_ROS_TIME}.now();
+
+                        uint16_t *tmp1 = m_safeDataAccess.getNextElement();
+
+                        m_safeDataAccess.setReadytoStart();
+
+                        //       getNewFrame(camera, tmp1);
+                        //       TO DO: get frame from server
+                        for (int i = 0; i < FRAME_SIZE; i++)
+                        {
+                                tmp1[i] = 1;
+                        }
+
+                        m_safeDataAccess.addElement(tmp1);
+                }
+        }
+
+        void stopNode()
+        {
+                publishers.removePublisherWorkers();
+                publishers.deletePublishers(camera);
+        }
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
-  // Initialize ROS 2
-  rclcpp::init(argc, argv);
+        // Initialize ROS 2
+        rclcpp::init(argc, argv);
 
-  std::string * arguments = parseArgs(argc, argv);
- 
-  // Create ToF Node
-  std::shared_ptr<TofNode> gmsl_node = std::make_shared<TofNode>(arguments, camera, frame);
+        std::string *arguments = parseArgs(argc, argv);
 
-  while (rclcpp::ok()) {
-    tof_node->service_callback();
-    rclcpp::spin_some(tof_node);
-  }
+        // Create ToF Node
+        std::shared_ptr<GmslNode> gmsl_node = std::make_shared<GmslNode>(arguments, camera, frame);
 
-  tof_node->stopNode();
+        while (rclcpp::ok())
+        {
+                gmsl_node->service_callback();
+                rclcpp::spin_some(gmsl_node);
+        }
 
-  // Shutdown the node when finished
-  rclcpp::shutdown();
-  return 0;
+        gmsl_node->stopNode();
+
+        // Shutdown the node when finished
+        rclcpp::shutdown();
+        return 0;
 }
