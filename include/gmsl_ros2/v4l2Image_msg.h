@@ -32,13 +32,15 @@
 #ifndef V4l2IMAGE_MSG_H
 #define V4l2IMAGE_MSG_H
 
+#include "adi_sensor_msg.h"
+
 #include <rcl/publisher.h>
 #include <rcl/time.h>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <sensor_msgs/msg/image.hpp>
 
-class v4l2ImageMsg
+class v4l2ImageMsg : public AdiSensorMsg
 {
 public:
         v4l2ImageMsg(
@@ -56,9 +58,7 @@ public:
         /**
          * @brief Converts the frame data to a message
          */
-        void FrameDataToMsg(
-            uint16_t *frame,
-            rclcpp::Time tStamp);
+        void FrameDataToMsg(uint16_t *frame, rclcpp::Time tStamp) override;
         /**
          * @brief Assigns values to the message fields concerning metadata
          */
@@ -72,9 +72,9 @@ public:
         /**
          * @brief Publishes a message
          */
-        void publishMsg(rclcpp::Publisher<sensor_msgs::msg::Image> &pub);
+        void publishMsg(rclcpp::Publisher<sensor_msgs::msg::Image> &pub) override;
 
-        sensor_msgs::msg::Image getMessage();
+        sensor_msgs::msg::Image getMessage() override;
 
 private:
         v4l2ImageMsg();
