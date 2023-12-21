@@ -44,6 +44,7 @@
 #include "safedataaccess.h"
 #include "std_msgs/msg/string.hpp"
 #include "v4l2Image_msg.h"
+#include "publisher_factory.h"
 
 #define FRAME_SIZE 1920 * 1080
 
@@ -53,14 +54,19 @@ using namespace std::chrono_literals;
 // Create the node class named MinimalPublisher which inherits the attributes
 // and methods of the rclcpp::Node class.
 
+std::string * parseArgs(int argc, char ** argv){
+        return nullptr;
+}
+
 class GmslNode : public rclcpp::Node
 {
 private:
         // Initializing camera and establishing connection
         uint16_t **frame;
-        // PublisherFactory publishers;
+        PublisherFactory publishers;
         // camera parameters
         bool m_video_thread;
+        std::vector<std::string> m_videoDevices;
 
 
 public:
@@ -84,18 +90,15 @@ private:
         OnSetParametersCallbackHandle::SharedPtr callback_handle_;
 
 public:
-        GmslNode(std::string *arguments, std::string camera_path, uint16_t **frame)
+        GmslNode(std::string *arguments, std::vector<std::string> videoDevices)
             : Node("tof_camera_node")
         {
                 m_video_thread = true;
 
                 this->declare_parameter("video", true);
-
                 this->get_parameter("video", m_video_thread);
+                m_videoDevices = videoDevices;
 
-                this->frame = frame;
-
-                // add 12 items in the list needed for circular vector
                 for (int i = 0; i <= 12; i++)
                 {
                         m_safeDataAccess.populateData(new uint16_t[FRAME_SIZE]);
@@ -106,7 +109,7 @@ public:
                         streamOnFlag = true;
                 }
 
-                publishers.createNew(this, camera, frame, &m_safeDataAccess);
+                publishers.createNew(this, videoDevices, frame, &m_safeDataAccess);
 
                 callback_handle_ = this->add_on_set_parameters_callback(
                     std::bind(&GmslNode::parameterCallback, this, std::placeholders::_1));
@@ -114,9 +117,9 @@ public:
                 if (
                     (std::strcmp(arguments[3].c_str(), "True") == 0) ||
                     (std::strcmp(arguments[3].c_str(), "true") == 0))
-                        publishers.createMultiThreadPublisherWorkers(camera, frame);
+                        publishers.createMultiThreadPublisherWorkers(frame);
                 else
-                        publishers.createSingleThreadPublisherWorker(camera, frame);
+                        publishers.createSingleThreadPublisherWorker(frame);
         }
 
         void service_callback()
@@ -143,7 +146,7 @@ public:
         void stopNode()
         {
                 publishers.removePublisherWorkers();
-                publishers.deletePublishers(camera);
+                publishers.deletePublishers(m_videoDevices);
         }
 };
 
@@ -152,10 +155,17 @@ int main(int argc, char *argv[])
         // Initialize ROS 2
         rclcpp::init(argc, argv);
 
+        std::vector<std::string> videoDevices = {
+                "/dev/video0",
+                "/dev/video1",
+                "/dev/video2",
+                "/dev/video3",
+        };
+
         std::string *arguments = parseArgs(argc, argv);
 
         // Create ToF Node
-        std::shared_ptr<GmslNode> gmsl_node = std::make_shared<GmslNode>(arguments, camera, frame);
+        std::shared_ptr<GmslNode> gmsl_node = std::make_shared<GmslNode>(arguments, videoDevices);
 
         while (rclcpp::ok())
         {

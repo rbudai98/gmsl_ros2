@@ -82,8 +82,8 @@ void v4l2ImageMsg::setDataMembers(uint16_t *frameData)
         // if (message.encoding.compare(sensor_msgs::image_encodings::MONO16) == 0)
         // {
                 // v4l2To16bitGrayscale(frameData, message.width, message.height);
-                message.data.data() = frameData;
-                // memcpy(msgDataPtr, frameData, message.step * message.height);
+                uint8_t* msgDataPtr = message.data.data();
+                memcpy(msgDataPtr, frameData, message.step * message.height);
         // }
         // else
                 // LOG(ERROR) << "Image encoding invalid or not available";
