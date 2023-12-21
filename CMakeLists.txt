@@ -18,16 +18,16 @@ find_package(sensor_msgs REQUIRED)
 find_package(Libwebsockets REQUIRED)
 
 
-set(SOURCE ${CMAKE_SOURCE_DIR}/include)
-set(SOURCES ${CMAKE_SOURCE_DIR}/include)
+set(SOURCE ${CMAKE_SOURCE_DIR}/include/gmsl_ros2)
+set(SOURCES ${CMAKE_SOURCE_DIR}/include/gmsl_ros2)
 
-FILE(GLOB_RECURSE HeaderFiles ${CMAKE_SOURCE_DIR}/include/*.h)
+FILE(GLOB_RECURSE HeaderFiles ${CMAKE_SOURCE_DIR}/include/gmsl_ros2/*.h)
 file(GLOB SOURCES SourceFiles ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
 add_executable(gmsl_ros2 ${CMAKE_CURRENT_SOURCE_DIR}/src/gmsl_ros2_node.cpp ${SOURCES} ${HeaderFiles} ${SourceFiles})
 
-target_include_directories(gmsl_ros2 PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_sources(gmsl_ros2 INTERFACE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(gmsl_ros2 PUBLIC ${CMAKE_SOURCE_DIR}/include/gmsl_ros2)
+target_sources(gmsl_ros2 INTERFACE ${CMAKE_SOURCE_DIR}/include/gmsl_ros2)
 
 ament_target_dependencies(gmsl_ros2 rclcpp std_msgs sensor_msgs)
 
